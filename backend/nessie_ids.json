@@ -1,0 +1,9 @@
+{
+  "customer_id": "273511bb-c0f9-4373-a00f-a647f0b2718f",
+  "account_id": "af5e8252-8593-41f9-bf71-9c0de52f5040",
+  "merchants": {
+    "StreamFlix": "5bfb8645-ae30-45bf-91bb-31f76fc49230",
+    "MusicPlus": "77a50338-5dff-4d48-9ce1-2cf4de8c1075",
+    "Campus Cafe": "0102279b-0083-42ac-b8f3-736b0fa507bb"
+  }
+}
