@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Send, Bot, User, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Send, Bot, User, Loader2, History, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import type {
   ChatMessage,
@@ -19,6 +19,28 @@ interface ChatProps {
   goals: SavingsGoal[];
   subscriptions: Subscription[];
   spending: SpendingSummary;
+}
+
+interface SavedChat {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  threadId: string | null;
+  assistantId: string | null;
+}
+
+const HISTORY_KEY = "spendsense-chat-history";
+
+function isSavedChat(value: unknown): value is SavedChat {
+  if (!value || typeof value !== "object") return false;
+  const chat = value as Partial<SavedChat>;
+  return typeof chat.id === "string" && typeof chat.title === "string" &&
+    (chat.threadId === null || typeof chat.threadId === "string") &&
+    (chat.assistantId === null || typeof chat.assistantId === "string") &&
+    Array.isArray(chat.messages) && chat.messages.length > 0 &&
+    chat.messages.every((message) => message &&
+      (message.role === "user" || message.role === "assistant") &&
+      typeof message.content === "string");
 }
 
 const STARTER_PROMPTS = [
@@ -49,12 +71,90 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
   const [loading, setLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [assistantId, setAssistantId] = useState<string | null>(null);
+  const [savedChats, setSavedChats] = useState<SavedChat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyReady, setHistoryReady] = useState(false);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const historyRef = useRef<SavedChat[]>([]);
+
+  useEffect(() => {
+    // Browser storage is read after hydration; it is unavailable during prerendering.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      const parsed: unknown = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed) || !parsed.every(isSavedChat)) {
+        throw new Error("Invalid chat history");
+      }
+      historyRef.current = parsed;
+      setSavedChats(parsed);
+    } catch {
+      setStorageError("Saved chats could not be loaded. Chat still works in this session.");
+    } finally {
+      setHistoryReady(true);
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
+
+  function persistHistory(chats: SavedChat[]) {
+    historyRef.current = chats;
+    setSavedChats(chats);
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(chats));
+      setStorageError(null);
+    } catch {
+      setStorageError("Chat history could not be saved in this browser. Keep this page open to retain this session.");
+    }
+  }
+
+  function saveChat(chat: SavedChat) {
+    persistHistory([chat, ...historyRef.current.filter((item) => item.id !== chat.id)]);
+  }
+
+  function openChat(chat: SavedChat) {
+    if (loading) return;
+    setActiveChatId(chat.id);
+    setMessages(chat.messages);
+    setThreadId(chat.threadId);
+    setAssistantId(chat.assistantId);
+    setInput("");
+    setHistoryOpen(false);
+  }
+
+  function deleteChat(id: string) {
+    if (loading) return;
+    persistHistory(historyRef.current.filter((chat) => chat.id !== id));
+    if (activeChatId === id) startNewConversation();
+  }
+
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior:
+        messages.length === 1 ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+    });
+  }, [messages, loading]);
 
   async function sendMessage(text: string) {
     const message = text.trim();
-    if (!message || loading) return;
+    if (!message || loading || !historyReady) return;
 
-    setMessages((prev) => [...prev, { role: "user", content: message }]);
+    const chatId = activeChatId ?? crypto.randomUUID();
+    const nextMessages: ChatMessage[] = [...messages, { role: "user", content: message }];
+    const title = (nextMessages.find((item) => item.role === "user")?.content ?? message).slice(0, 80);
+    setActiveChatId(chatId);
+    setHistoryOpen(false);
+    setMessages(nextMessages);
+    saveChat({ id: chatId, title, messages: nextMessages, threadId, assistantId });
     setInput("");
     setLoading(true);
 
@@ -71,21 +171,28 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
       setAssistantId(response.assistant_id);
       setThreadId(response.thread_id);
 
-      setMessages((prev) => [
-        ...prev,
+      const updatedMessages: ChatMessage[] = [
+        ...nextMessages,
         { role: "assistant", content: response.reply },
-      ]);
+      ];
+      setMessages(updatedMessages);
+      saveChat({
+        id: chatId, title, messages: updatedMessages,
+        threadId: response.thread_id, assistantId: response.assistant_id,
+      });
     } catch (error) {
       console.error("Chat error:", error);
 
-      setMessages((prev) => [
-        ...prev,
+      const updatedMessages: ChatMessage[] = [
+        ...nextMessages,
         {
           role: "assistant",
           content:
             "Sorry, I couldn't connect to the AI assistant. Please try again.",
         },
-      ]);
+      ];
+      setMessages(updatedMessages);
+      saveChat({ id: chatId, title, messages: updatedMessages, threadId, assistantId });
     } finally {
       setLoading(false);
     }
@@ -97,7 +204,12 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
   }
 
   function startNewConversation() {
+    if (loading) return;
+    setActiveChatId(null);
     setThreadId(null);
+    setAssistantId(null);
+    setInput("");
+    setHistoryOpen(false);
     setMessages([
       {
         role: "assistant",
@@ -108,7 +220,7 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
 
   return (
     <div className="flex h-[600px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-surface shadow-sm">
-      <div className="flex items-center justify-between border-b border-gray-200 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 p-4">
         <div className="flex items-center gap-2">
           <Bot className="text-indigo-600" size={24} />
           <div>
@@ -119,6 +231,18 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
           </div>
         </div>
 
+        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setHistoryOpen(!historyOpen)}
+          disabled={loading || !historyReady}
+          aria-expanded={historyOpen}
+          aria-controls="chat-history"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          <History size={16} aria-hidden="true" />
+          History
+        </button>
         <button
           onClick={startNewConversation}
           disabled={loading}
@@ -126,9 +250,49 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
         >
           New Chat
         </button>
+        </div>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto bg-gray-50 p-4">
+      {storageError && (
+        <p role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+          {storageError}
+        </p>
+      )}
+
+      {historyOpen && (
+        <section id="chat-history" aria-label="Chat history" className="max-h-56 shrink-0 overflow-y-auto border-b border-gray-200 bg-surface p-4">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Previous chats</h3>
+              <p className="mt-1 text-xs text-gray-500">Saved in this browser. Deleting removes the local copy.</p>
+            </div>
+            <button type="button" onClick={() => setHistoryOpen(false)} aria-label="Close chat history" className="rounded-md p-1 text-gray-500 hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+          {savedChats.length === 0 ? (
+            <p className="text-sm text-gray-500">Your conversations will appear here after you send a message.</p>
+          ) : (
+            <ul className="space-y-1">
+              {savedChats.map((chat) => (
+                <li key={chat.id} className={`flex items-center gap-2 rounded-lg ${chat.id === activeChatId ? "bg-indigo-50" : "hover:bg-gray-50"}`}>
+                  <button type="button" onClick={() => openChat(chat)} aria-current={chat.id === activeChatId ? "true" : undefined} className="min-w-0 flex-1 truncate px-3 py-2 text-left text-sm text-gray-800" title={chat.title}>
+                    {chat.title}
+                  </button>
+                  <button type="button" onClick={() => deleteChat(chat.id)} aria-label={`Delete chat: ${chat.title}`} className="shrink-0 rounded-md p-2 text-gray-500 hover:bg-red-50 hover:text-red-600">
+                    <Trash2 size={16} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      <div
+        ref={messagesContainerRef}
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-gray-50 p-4"
+      >
         {messages.map((message, index) => (
           <div
             key={index}
@@ -176,6 +340,7 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
               <button
                 key={prompt.label}
                 type="button"
+                disabled={!historyReady}
                 onClick={() => void sendMessage(prompt.message)}
                 className="rounded-xl border border-indigo-100 bg-surface px-3 py-2 text-left text-sm font-medium text-indigo-600 transition hover:border-indigo-300 hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
               >
@@ -206,7 +371,7 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
 
         <button
           type="submit"
-          disabled={loading || !input.trim()}
+          disabled={loading || !historyReady || !input.trim()}
           className="rounded-xl bg-indigo-600 px-4 text-white hover:bg-indigo-700 disabled:opacity-50"
           aria-label="Send message"
         >
