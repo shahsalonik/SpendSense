@@ -139,7 +139,11 @@ export default function Home() {
           </div>
         </section>
 
-        <Chat />
+        <Chat
+          goals={goals}
+          subscriptions={sampleSubscriptions}
+          spending={{ categories: sampleSpending }}
+        />
       </div>
     </main>
   );

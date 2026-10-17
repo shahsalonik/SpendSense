@@ -46,10 +46,14 @@ export const api = {
     }),
 
   // Send a message to the Backboard AI assistant
+
   sendChat: (
     message: string,
     assistantId: string | null,
     threadId: string | null,
+    goals: SavingsGoal[],
+    subscriptions: Subscription[],
+    spending: SpendingSummary,
   ) =>
     request<ChatResponse>("/api/chat", {
       method: "POST",
@@ -60,6 +64,11 @@ export const api = {
         message,
         assistant_id: assistantId,
         thread_id: threadId,
+        context: {
+          goals,
+          subscriptions,
+          spending,
+        },
       }),
     }),
 };

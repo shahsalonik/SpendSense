@@ -1,12 +1,27 @@
-
 "use client";
 
 import { useState, type FormEvent } from "react";
 import { Send, Bot, User, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { ChatMessage } from "@/lib/types";
+import type {
+  ChatMessage,
+  SavingsGoal,
+  Subscription,
+  SpendingSummary,
+} from "@/lib/types";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
-export default function Chat() {
+interface ChatProps {
+  goals: SavingsGoal[];
+  subscriptions: Subscription[];
+  spending: SpendingSummary;
+}
+
+export default function Chat({ goals, subscriptions, spending }: ChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -26,10 +41,7 @@ export default function Chat() {
     const message = input.trim();
     if (!message || loading) return;
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: message },
-    ]);
+    setMessages((prev) => [...prev, { role: "user", content: message }]);
     setInput("");
     setLoading(true);
 
@@ -37,7 +49,10 @@ export default function Chat() {
       const response = await api.sendChat(
         message,
         assistantId,
-        threadId
+        threadId,
+        goals,
+        subscriptions,
+        spending,
       );
 
       setAssistantId(response.assistant_id);
@@ -68,8 +83,7 @@ export default function Chat() {
     setMessages([
       {
         role: "assistant",
-        content:
-          "New conversation started! What would you like to discuss?",
+        content: "New conversation started! What would you like to discuss?",
       },
     ]);
   }
@@ -80,9 +94,7 @@ export default function Chat() {
         <div className="flex items-center gap-2">
           <Bot className="text-indigo-600" size={24} />
           <div>
-            <h2 className="font-semibold text-gray-900">
-              SpendSense AI
-            </h2>
+            <h2 className="font-semibold text-gray-900">SpendSense AI</h2>
             <p className="text-xs text-gray-500">
               Your personal financial assistant
             </p>
@@ -103,9 +115,7 @@ export default function Chat() {
           <div
             key={index}
             className={`flex gap-2 ${
-              message.role === "user"
-                ? "justify-end"
-                : "justify-start"
+              message.role === "user" ? "justify-end" : "justify-start"
             }`}
           >
             {message.role === "assistant" && (
@@ -119,7 +129,21 @@ export default function Chat() {
                   : "border border-gray-200 bg-white text-gray-800"
               }`}
             >
-              {message.content}
+              {message.role === "assistant" ? (
+                <div className="text-sm leading-relaxed [&_p]:my-1 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_.katex-display]:my-2 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-1">
+                  <ReactMarkdown
+                    remarkPlugins={[
+                      remarkGfm,
+                      [remarkMath, { singleDollarTextMath: false }],
+                    ]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                message.content
+              )}
             </div>
 
             {message.role === "user" && (
