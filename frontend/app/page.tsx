@@ -1,32 +1,18 @@
 "use client";
+
 import { useEffect, useState } from "react";
+
 import AddGoalForm from "@/components/AddGoalForm";
 import Chat from "@/components/Chat";
 import SubscriptionCard from "@/components/SubscriptionCard";
-import type { Subscription } from "@/lib/types";
 import GoalCard from "@/components/GoalCard";
-import type { SavingsGoal } from "@/lib/types";
 import SpendingOverview from "@/components/SpendingOverview";
-import type { SpendingCategory } from "@/lib/types";
+
 import { api } from "@/lib/api";
 
-const sampleSubscriptions: Subscription[] = [
-  {
-    merchant: "StreamFlix",
-    previous_amount: 11.99,
-    current_amount: 16.99,
-    monthly_increase: 5,
-    price_increased: true,
-  },
-  {
-    merchant: "MusicPlus",
-    previous_amount: 9.99,
-    current_amount: 9.99,
-    monthly_increase: 0,
-    price_increased: false,
-  },
-];
+import type { Subscription, SavingsGoal, SpendingCategory } from "@/lib/types";
 
+// Temporary goals until Person A's goals API is ready
 const sampleGoals: SavingsGoal[] = [
   {
     id: "goal-1",
@@ -51,34 +37,47 @@ const sampleGoals: SavingsGoal[] = [
   },
 ];
 
-// const sampleSpending: SpendingCategory[] = [
-//   { category: "Housing", amount: 1200 },
-//   { category: "Dining", amount: 420 },
-//   { category: "Groceries", amount: 350 },
-//   { category: "Entertainment", amount: 180 },
-//   { category: "Transportation", amount: 150 },
-//   { category: "Shopping", amount: 225 },
-// ];
-
 export default function Home() {
+  // Savings goals
   const [goals, setGoals] = useState<SavingsGoal[]>(sampleGoals);
   const [goalsLoaded, setGoalsLoaded] = useState(false);
-  const [spending, setSpending] = useState<SpendingCategory[]>([]);
 
+  // Live Tiger Data financial information
+  const [spending, setSpending] = useState<SpendingCategory[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+
+  // Loading and error states
+  const [loading, setLoading] = useState(true);
+  const [financialError, setFinancialError] = useState<string | null>(null);
+
+  // Fetch live spending and subscriptions
   useEffect(() => {
-    async function loadSpending() {
+    async function loadFinancialData() {
       try {
-        const data = await api.getSummary();
-        console.log("Spending API response:", data);
-        setSpending(data.categories);
+        setLoading(true);
+        setFinancialError(null);
+
+        const [summaryData, subscriptionData] = await Promise.all([
+          api.getSummary(),
+          api.getSubscriptions(),
+        ]);
+
+        setSpending(summaryData.categories);
+        setSubscriptions(subscriptionData.subscriptions);
       } catch (error) {
-        console.error("Failed to load spending data:", error);
+        console.error("Failed to load financial data:", error);
+        setFinancialError(
+          "Unable to load financial data. Please make sure the backend is running.",
+        );
+      } finally {
+        setLoading(false);
       }
     }
 
-    loadSpending();
+    loadFinancialData();
   }, []);
 
+  // Load saved goals from localStorage
   useEffect(() => {
     try {
       const savedGoals = localStorage.getItem("spendsense-goals");
@@ -97,6 +96,7 @@ export default function Home() {
     }
   }, []);
 
+  // Persist goals whenever they change
   useEffect(() => {
     if (goalsLoaded) {
       localStorage.setItem("spendsense-goals", JSON.stringify(goals));
@@ -110,35 +110,74 @@ export default function Home() {
   function handleDeleteGoal(id: string) {
     setGoals((prev) => prev.filter((goal) => goal.id !== id));
   }
+
   return (
     <main className="min-h-screen bg-slate-100 p-6">
       <div className="mx-auto max-w-6xl">
+        {/* Header */}
         <h1 className="mb-2 text-3xl font-bold text-gray-900">SpendSense</h1>
 
         <p className="mb-8 text-gray-600">
           Your AI-powered financial wellness dashboard
         </p>
 
+        {/* Financial data error */}
+        {financialError && (
+          <div
+            role="alert"
+            className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          >
+            {financialError}
+          </div>
+        )}
+
+        {/* Spending Overview */}
         <section className="mb-8">
-          <SpendingOverview categories={spending} />
+          {loading ? (
+            <div className="rounded-xl bg-white p-6 text-gray-500">
+              Loading spending data...
+            </div>
+          ) : financialError ? (
+            <div className="rounded-xl bg-white p-6 text-gray-500">
+              Spending data unavailable.
+            </div>
+          ) : (
+            <SpendingOverview categories={spending} />
+          )}
         </section>
 
+        {/* Subscriptions */}
         <section className="mb-8">
           <h2 className="mb-4 text-xl font-semibold text-gray-900">
             Your Subscriptions
           </h2>
 
-          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-            {sampleSubscriptions.map((subscription) => (
-              <SubscriptionCard
-                key={subscription.merchant}
-                subscription={subscription}
-                goals={goals}
-              />
-            ))}
-          </div>
+          {loading ? (
+            <div className="rounded-xl bg-white p-6 text-gray-500">
+              Detecting subscriptions...
+            </div>
+          ) : financialError ? (
+            <div className="rounded-xl bg-white p-6 text-gray-500">
+              Subscription data unavailable.
+            </div>
+          ) : subscriptions.length === 0 ? (
+            <div className="rounded-xl bg-white p-6 text-gray-500">
+              No recurring subscriptions detected.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+              {subscriptions.map((subscription) => (
+                <SubscriptionCard
+                  key={subscription.merchant}
+                  subscription={subscription}
+                  goals={goals}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
+        {/* Savings Goals */}
         <section className="mb-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">
@@ -155,11 +194,14 @@ export default function Home() {
           </div>
         </section>
 
-        <Chat
-          goals={goals}
-          subscriptions={sampleSubscriptions}
-          spending={{ categories: spending }}
-        />
+        {/* Backboard AI Assistant */}
+        {!loading && !financialError && (
+          <Chat
+            goals={goals}
+            subscriptions={subscriptions}
+            spending={{ categories: spending }}
+          />
+        )}
       </div>
     </main>
   );
