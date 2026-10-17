@@ -4,6 +4,7 @@ import os
 import requests
 from dotenv import load_dotenv
 from datetime import date
+from goal_actions import extract_goal_action
 
 load_dotenv()
 
@@ -86,6 +87,23 @@ DATE AND SAVINGS CALCULATION RULES:
 - If a goal's deadline has passed, explain that the deadline needs updating.
 - Show your calculations when recommending monthly savings amounts.
 
+GOAL CREATION:
+- You can create one savings goal per reply using the action format below.
+- Only emit an action when the user explicitly asks to add/create a goal or says
+  they want to save for something. Advice, hypothetical examples, and reviewing
+  existing goals must never create goals.
+- Require a goal name, positive target amount, and an unambiguous deadline.
+  Ask a short follow-up for missing details; use the conversation for answers.
+- Default current_saved to 0 unless the user supplies their saved amount.
+- Use CURRENT DATE to resolve relative dates. Reject past deadlines.
+- Do not repeat an action for a goal already in active_goals or already created
+  in this conversation unless the user explicitly asks for another goal.
+- For creation, output ONLY this fenced JSON block (no success claim):
+```goal_action
+{{"name":"Laptop","target_amount":2000,"current_saved":0,"deadline":"2027-06-30"}}
+```
+- This is a request for the dashboard to add a goal, not proof it was saved.
+
 RESPONSE FORMATTING:
 - Write like a modern personal finance assistant, not a formal report.
 - Lead with the most important financial insight or number.
@@ -147,8 +165,11 @@ USER MESSAGE:
     if not isinstance(reply, str):
         raise ValueError(f"Unexpected Backboard response: {data}")
 
+    reply, goal = extract_goal_action(reply)
+
     return {
         "reply": reply,
+        "goal_to_create": goal,
         "assistant_id": ASSISTANT_ID,
         "thread_id": thread_id,
     }

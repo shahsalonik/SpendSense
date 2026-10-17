@@ -46,6 +46,7 @@ class ChatResponse(BaseModel):
     reply: str
     assistant_id: str
     thread_id: str
+    goal_to_create: dict | None = None
 
 
 @router.post("/api/chat", response_model=ChatResponse)

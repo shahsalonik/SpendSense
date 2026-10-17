@@ -39,7 +39,7 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
       )
     : null;
   const monthsRemaining = daysRemaining === null ? null : Math.max(0, daysRemaining / 30.44);
-  const isDueSoon = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 30;
+  const isDueSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining < 30;
 
   const monthlyNeeded =
     monthsRemaining === null
@@ -52,6 +52,16 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
 
   const isOverdue =
     daysRemaining !== null && daysRemaining < 0 && remaining > 0;
+
+  const savingsColors = remaining === 0
+    ? { panel: "bg-[#edf3e9]", label: "text-[#486044]", amount: "text-[#30472e]" }
+    : isOverdue
+      ? { panel: "bg-red-50", label: "text-red-800", amount: "text-red-900" }
+      : daysRemaining === 0
+      ? { panel: "bg-amber-50", label: "text-amber-800", amount: "text-amber-900" }
+      : isDueSoon
+        ? { panel: "bg-[#edf3e9]", label: "text-[#486044]", amount: "text-[#30472e]" }
+        : { panel: "bg-indigo-50", label: "text-indigo-700", amount: "text-indigo-900" };
 
   const formatCurrency = (amount: number) =>
     amount.toLocaleString("en-US", {
@@ -117,41 +127,44 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
         </span>
       </div>
 
-      {/* Monthly savings recommendation */}
-      <div className="rounded-lg bg-indigo-50 p-3">
-        <p className="mb-1 text-xs font-medium text-indigo-700">
+      {/* Savings recommendation */}
+      <div className={`rounded-lg p-3 ${savingsColors.panel}`}>
+        <p className={`mb-1 text-xs font-medium ${savingsColors.label}`}>
           {remaining === 0
             ? "Savings Goal Complete"
             : isOverdue
               ? "Goal Needs Attention"
-              : isDueSoon
-                ? "Needed by Your Deadline"
-                : "Estimated Monthly Savings Needed"}
+              : daysRemaining === 0
+                ? "Needed Today"
+                : isDueSoon
+                  ? "Estimated Weekly Savings Needed"
+                  : "Estimated Monthly Savings Needed"}
         </p>
 
         {monthsRemaining === null ? (
           <p className="text-sm text-indigo-600">Calculating...</p>
         ) : remaining === 0 ? (
-          <p className="font-semibold text-green-700">Goal reached!</p>
+          <p className={`font-semibold ${savingsColors.amount}`}>Goal reached!</p>
         ) : isOverdue ? (
-          <p className="text-sm font-medium text-red-600">
+          <p className={`text-sm font-medium ${savingsColors.amount}`}>
             Deadline passed — update your goal deadline.
           </p>
-        ) : isDueSoon ? (
-          <div>
-            <p className="text-xl font-bold text-indigo-900">
-              {formatCurrency(remaining)}
-            </p>
-            <p className="mt-1 text-xs text-indigo-700">
-              {daysRemaining === 0
-                ? "Due today"
-                : `${daysRemaining} ${daysRemaining === 1 ? "day" : "days"} left to save this amount`}
-            </p>
-          </div>
-        ) : monthlyNeeded !== null ? (
-          <p className="text-xl font-bold text-indigo-900">
-            {formatCurrency(monthlyNeeded)}/month
+        ) : daysRemaining === 0 ? (
+          <p className={`text-xl font-bold ${savingsColors.amount}`}>
+            {formatCurrency(remaining)}
           </p>
+        ) : monthlyNeeded !== null ? (
+          <div>
+            <p className={`text-xl font-bold ${savingsColors.amount}`}>
+              {formatCurrency(isDueSoon && daysRemaining !== null ? remaining / (daysRemaining / 7) : monthlyNeeded)}/{isDueSoon ? "week" : "month"}
+            </p>
+            {isDueSoon && daysRemaining !== null && daysRemaining > 0 && (
+              <p className={`mt-1 text-xs ${savingsColors.label}`}>
+                About {formatCurrency(remaining / daysRemaining)}/day
+                {" "}for the next {daysRemaining} {daysRemaining === 1 ? "day" : "days"}.
+              </p>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-red-600">
             Deadline is too close to calculate monthly savings.

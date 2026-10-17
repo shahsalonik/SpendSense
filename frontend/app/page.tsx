@@ -7,6 +7,7 @@ import AddGoalForm from "@/components/AddGoalForm";
 import Chat from "@/components/Chat";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import GoalCard from "@/components/GoalCard";
+import GoalSavingsSummary from "@/components/GoalSavingsSummary";
 import SpendingOverview from "@/components/SpendingOverview";
 
 import { api } from "@/lib/api";
@@ -196,6 +197,8 @@ export default function Home() {
             <AddGoalForm onAddGoal={handleAddGoal} />
           </div>
 
+          {goalsLoaded && <GoalSavingsSummary goals={goals} />}
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {goals.map((goal) => (
               <GoalCard key={goal.id} goal={goal} onDelete={handleDeleteGoal} />
@@ -209,6 +212,7 @@ export default function Home() {
             goals={goals}
             subscriptions={subscriptions}
             spending={{ categories: spending }}
+            onAddGoal={handleAddGoal}
           />
         )}
       </div>

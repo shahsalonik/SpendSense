@@ -42,6 +42,7 @@ export interface ChatMessage {
 
 // Response from the Backboard-powered chat endpoint
 export interface ChatResponse {
+  goal_to_create?: Omit<SavingsGoal, "id"> | null;
   reply: string;
   assistant_id: string;
   thread_id: string;

@@ -17,6 +17,7 @@ import "katex/dist/katex.min.css";
 
 interface ChatProps {
   goals: SavingsGoal[];
+  onAddGoal: (goal: SavingsGoal) => void;
   subscriptions: Subscription[];
   spending: SpendingSummary;
 }
@@ -58,7 +59,7 @@ const STARTER_PROMPTS = [
   },
 ];
 
-export default function Chat({ goals, subscriptions, spending }: ChatProps) {
+export default function Chat({ goals, subscriptions, spending, onAddGoal }: ChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -171,9 +172,22 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
       setAssistantId(response.assistant_id);
       setThreadId(response.thread_id);
 
+      let reply = response.reply;
+      if (response.goal_to_create) {
+        const goal = response.goal_to_create;
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        if (goal.deadline < today) {
+          reply = "Choose today or a future date for your goal. What deadline would you like?";
+        } else {
+          onAddGoal({ ...goal, id: crypto.randomUUID() });
+          reply = `Added **${goal.name}** to My Savings Goals: **$${goal.target_amount.toLocaleString()}** by **${goal.deadline}**, with **$${goal.current_saved.toLocaleString()}** already saved.`;
+        }
+      }
+
       const updatedMessages: ChatMessage[] = [
         ...nextMessages,
-        { role: "assistant", content: response.reply },
+        { role: "assistant", content: reply },
       ];
       setMessages(updatedMessages);
       saveChat({
