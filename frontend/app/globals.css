@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3efe6;
+  --foreground: #182338;
+  color-scheme: light;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
+  --font-brand: var(--font-brand-serif), Georgia, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-surface: #fffcf6;
+  --color-gray-50: #f8f5ee;
+  --color-gray-100: #f0ece3;
+  --color-gray-200: #e4dfd4;
+  --color-gray-300: #cbd2de;
+  --color-gray-400: #8b96a8;
+  --color-gray-500: #657187;
+  --color-gray-600: #505d73;
+  --color-gray-700: #39485f;
+  --color-gray-800: #26354b;
+  --color-gray-900: #182338;
+  --color-indigo-50: #eef1fb;
+  --color-indigo-100: #e0e6f8;
+  --color-indigo-200: #c4cff0;
+  --color-indigo-300: #a2b1e4;
+  --color-indigo-400: #7c8dd5;
+  --color-indigo-500: #6273c5;
+  --color-indigo-600: #4e5eb0;
+  --color-indigo-700: #414f96;
+  --color-indigo-800: #35417c;
+  --color-indigo-900: #2b3564;
+  --shadow-sm: 0 1px 3px rgb(24 35 56 / 0.04), 0 4px 16px rgb(24 35 56 / 0.025);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+@layer base {
+  h1, h2, h3, h4 {
+    letter-spacing: -0.025em;
+  }
 }

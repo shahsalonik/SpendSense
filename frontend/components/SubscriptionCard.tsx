@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import {
-  ArrowUpRight,
   Repeat,
   AlertTriangle,
   ChevronDown,
@@ -36,8 +35,8 @@ export default function SubscriptionCard({
   const annualIncrease = monthly_increase * 12;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-2">
+    <div className="rounded-2xl border border-gray-200 bg-surface p-5 shadow-sm">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-indigo-50 p-3">
             <Repeat className="text-indigo-600" size={22} />
@@ -61,22 +60,18 @@ export default function SubscriptionCard({
         )}
       </div>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-gray-500">Previous</p>
-          <p className="text-lg font-semibold text-gray-500">
-            ${previous_amount.toFixed(2)}
-          </p>
-        </div>
-
-        <ArrowUpRight className="text-gray-400" size={22} />
-
-        <div className="text-right">
-          <p className="text-xs text-gray-500">Current</p>
-          <p className="text-xl font-bold text-gray-900">
+      <div>
+        <p className="flex items-baseline gap-1.5">
+          <span className="text-3xl font-bold tracking-tight text-gray-900 tabular-nums">
             ${current_amount.toFixed(2)}
-          </p>
-        </div>
+          </span>
+          <span className="text-sm text-gray-500">/month</span>
+        </p>
+        <p className="mt-2 text-sm text-gray-500">
+          {current_amount === previous_amount
+            ? "Price unchanged"
+            : `Previously $${previous_amount.toFixed(2)}/month`}
+        </p>
       </div>
 
       {hasIncrease && (
@@ -86,7 +81,7 @@ export default function SubscriptionCard({
               +${monthly_increase.toFixed(2)}/month
             </p>
             <p className="mt-1 text-xs text-amber-700">
-              That's an additional ${annualIncrease.toFixed(2)}
+              That&apos;s an additional ${annualIncrease.toFixed(2)}
               {" "}per year if the new price continues.
             </p>
           </div>
@@ -136,7 +131,7 @@ export default function SubscriptionCard({
 
                       {remaining === 0 ? (
                         <p className="text-sm text-green-700">
-                          You've already reached this goal!
+                          You&apos;ve already reached this goal!
                         </p>
                       ) : (
                         <>

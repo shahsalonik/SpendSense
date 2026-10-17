@@ -30,13 +30,16 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
 
   const deadline = new Date(`${goal.deadline}T00:00:00`);
 
-  // Calculate remaining months, including partial months.
-  const monthsRemaining = today
-    ? Math.max(
-        0,
-        (deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30.44),
+  // Compare calendar dates so time of day and daylight saving do not affect the rate.
+  const daysRemaining = today
+    ? Math.round(
+        (Date.UTC(deadline.getFullYear(), deadline.getMonth(), deadline.getDate()) -
+          Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
+          (1000 * 60 * 60 * 24),
       )
     : null;
+  const monthsRemaining = daysRemaining === null ? null : Math.max(0, daysRemaining / 30.44);
+  const isDueSoon = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 30;
 
   const monthlyNeeded =
     monthsRemaining === null
@@ -48,7 +51,7 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
           : 0;
 
   const isOverdue =
-    today !== null && deadline.getTime() < today.getTime() && remaining > 0;
+    daysRemaining !== null && daysRemaining < 0 && remaining > 0;
 
   const formatCurrency = (amount: number) =>
     amount.toLocaleString("en-US", {
@@ -57,7 +60,7 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
     });
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-surface p-5 shadow-sm">
       {/* Header */}
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -117,7 +120,13 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
       {/* Monthly savings recommendation */}
       <div className="rounded-lg bg-indigo-50 p-3">
         <p className="mb-1 text-xs font-medium text-indigo-700">
-          Recommended Monthly Savings
+          {remaining === 0
+            ? "Savings Goal Complete"
+            : isOverdue
+              ? "Goal Needs Attention"
+              : isDueSoon
+                ? "Needed by Your Deadline"
+                : "Estimated Monthly Savings Needed"}
         </p>
 
         {monthsRemaining === null ? (
@@ -128,6 +137,17 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
           <p className="text-sm font-medium text-red-600">
             Deadline passed — update your goal deadline.
           </p>
+        ) : isDueSoon ? (
+          <div>
+            <p className="text-xl font-bold text-indigo-900">
+              {formatCurrency(remaining)}
+            </p>
+            <p className="mt-1 text-xs text-indigo-700">
+              {daysRemaining === 0
+                ? "Due today"
+                : `${daysRemaining} ${daysRemaining === 1 ? "day" : "days"} left to save this amount`}
+            </p>
+          </div>
         ) : monthlyNeeded !== null ? (
           <p className="text-xl font-bold text-indigo-900">
             {formatCurrency(monthlyNeeded)}/month

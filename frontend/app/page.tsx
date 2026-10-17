@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Landmark } from "lucide-react";
 
 import AddGoalForm from "@/components/AddGoalForm";
 import Chat from "@/components/Chat";
@@ -112,14 +113,22 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6">
+    <main className="min-h-screen bg-background p-6">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <h1 className="mb-2 text-3xl font-bold text-gray-900">SpendSense</h1>
-
-        <p className="mb-8 text-gray-600">
-          Your AI-powered financial wellness dashboard
-        </p>
+        <header className="mb-8">
+          <div className="mb-2 flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700">
+              <Landmark size={21} strokeWidth={1.5} aria-hidden="true" />
+            </span>
+            <h1 className="font-brand text-5xl font-semibold leading-tight tracking-tight text-gray-900 sm:text-6xl">
+              SpendSense
+            </h1>
+          </div>
+          <p className="text-sm text-gray-600 sm:text-base">
+            Spend smarter. Reach your goals.
+          </p>
+        </header>
 
         {/* Financial data error */}
         {financialError && (
@@ -134,11 +143,11 @@ export default function Home() {
         {/* Spending Overview */}
         <section className="mb-8">
           {loading ? (
-            <div className="rounded-xl bg-white p-6 text-gray-500">
+            <div className="rounded-xl bg-surface p-6 text-gray-500">
               Loading spending data...
             </div>
           ) : financialError ? (
-            <div className="rounded-xl bg-white p-6 text-gray-500">
+            <div className="rounded-xl bg-surface p-6 text-gray-500">
               Spending data unavailable.
             </div>
           ) : (
@@ -153,15 +162,15 @@ export default function Home() {
           </h2>
 
           {loading ? (
-            <div className="rounded-xl bg-white p-6 text-gray-500">
+            <div className="rounded-xl bg-surface p-6 text-gray-500">
               Detecting subscriptions...
             </div>
           ) : financialError ? (
-            <div className="rounded-xl bg-white p-6 text-gray-500">
+            <div className="rounded-xl bg-surface p-6 text-gray-500">
               Subscription data unavailable.
             </div>
           ) : subscriptions.length === 0 ? (
-            <div className="rounded-xl bg-white p-6 text-gray-500">
+            <div className="rounded-xl bg-surface p-6 text-gray-500">
               No recurring subscriptions detected.
             </div>
           ) : (

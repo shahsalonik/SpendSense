@@ -21,6 +21,21 @@ interface ChatProps {
   spending: SpendingSummary;
 }
 
+const STARTER_PROMPTS = [
+  {
+    label: "Review my spending",
+    message: "Analyze my spending. Which categories am I spending the most on, and where could I save?",
+  },
+  {
+    label: "Find subscription increases",
+    message: "Which of my subscriptions increased in price, and how much extra will they cost me each month and year?",
+  },
+  {
+    label: "Help with my savings goals",
+    message: "Review my savings goals and suggest specific changes to my spending or subscriptions that could help me reach them.",
+  },
+];
+
 export default function Chat({ goals, subscriptions, spending }: ChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -35,10 +50,8 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [assistantId, setAssistantId] = useState<string | null>(null);
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
-    const message = input.trim();
+  async function sendMessage(text: string) {
+    const message = text.trim();
     if (!message || loading) return;
 
     setMessages((prev) => [...prev, { role: "user", content: message }]);
@@ -78,6 +91,11 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
     }
   }
 
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    void sendMessage(input);
+  }
+
   function startNewConversation() {
     setThreadId(null);
     setMessages([
@@ -89,7 +107,7 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
   }
 
   return (
-    <div className="flex h-[600px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="flex h-[600px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-surface shadow-sm">
       <div className="flex items-center justify-between border-b border-gray-200 p-4">
         <div className="flex items-center gap-2">
           <Bot className="text-indigo-600" size={24} />
@@ -123,10 +141,10 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
             )}
 
             <div
-              className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm ${
+              className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
                 message.role === "user"
-                  ? "bg-indigo-600 text-white"
-                  : "border border-gray-200 bg-white text-gray-800"
+                  ? "whitespace-pre-wrap bg-indigo-600 text-white"
+                  : "whitespace-normal border border-gray-200 bg-surface text-gray-800"
               }`}
             >
               {message.role === "assistant" ? (
@@ -151,6 +169,21 @@ export default function Chat({ goals, subscriptions, spending }: ChatProps) {
             )}
           </div>
         ))}
+
+        {messages.length === 1 && !loading && (
+          <div className="ml-7 flex flex-wrap gap-2">
+            {STARTER_PROMPTS.map((prompt) => (
+              <button
+                key={prompt.label}
+                type="button"
+                onClick={() => void sendMessage(prompt.message)}
+                className="rounded-xl border border-indigo-100 bg-surface px-3 py-2 text-left text-sm font-medium text-indigo-600 transition hover:border-indigo-300 hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              >
+                {prompt.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {loading && (
           <div className="flex items-center gap-2 text-sm text-gray-500">

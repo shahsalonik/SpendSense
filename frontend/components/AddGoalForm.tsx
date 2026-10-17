@@ -65,7 +65,7 @@ export default function AddGoalForm({ onAddGoal }: AddGoalFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm"
+      className="rounded-2xl border border-indigo-200 bg-surface p-5 shadow-sm"
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-semibold text-gray-900">Create a Savings Goal</h3>
