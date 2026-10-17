@@ -8,6 +8,7 @@ import GoalCard from "@/components/GoalCard";
 import type { SavingsGoal } from "@/lib/types";
 import SpendingOverview from "@/components/SpendingOverview";
 import type { SpendingCategory } from "@/lib/types";
+import { api } from "@/lib/api";
 
 const sampleSubscriptions: Subscription[] = [
   {
@@ -50,18 +51,33 @@ const sampleGoals: SavingsGoal[] = [
   },
 ];
 
-const sampleSpending: SpendingCategory[] = [
-  { category: "Housing", amount: 1200 },
-  { category: "Dining", amount: 420 },
-  { category: "Groceries", amount: 350 },
-  { category: "Entertainment", amount: 180 },
-  { category: "Transportation", amount: 150 },
-  { category: "Shopping", amount: 225 },
-];
+// const sampleSpending: SpendingCategory[] = [
+//   { category: "Housing", amount: 1200 },
+//   { category: "Dining", amount: 420 },
+//   { category: "Groceries", amount: 350 },
+//   { category: "Entertainment", amount: 180 },
+//   { category: "Transportation", amount: 150 },
+//   { category: "Shopping", amount: 225 },
+// ];
 
 export default function Home() {
   const [goals, setGoals] = useState<SavingsGoal[]>(sampleGoals);
   const [goalsLoaded, setGoalsLoaded] = useState(false);
+  const [spending, setSpending] = useState<SpendingCategory[]>([]);
+
+  useEffect(() => {
+    async function loadSpending() {
+      try {
+        const data = await api.getSummary();
+        console.log("Spending API response:", data);
+        setSpending(data.categories);
+      } catch (error) {
+        console.error("Failed to load spending data:", error);
+      }
+    }
+
+    loadSpending();
+  }, []);
 
   useEffect(() => {
     try {
@@ -104,7 +120,7 @@ export default function Home() {
         </p>
 
         <section className="mb-8">
-          <SpendingOverview categories={sampleSpending} />
+          <SpendingOverview categories={spending} />
         </section>
 
         <section className="mb-8">
@@ -142,7 +158,7 @@ export default function Home() {
         <Chat
           goals={goals}
           subscriptions={sampleSubscriptions}
-          spending={{ categories: sampleSpending }}
+          spending={{ categories: spending }}
         />
       </div>
     </main>
