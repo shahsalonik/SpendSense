@@ -188,7 +188,7 @@ export default function Home() {
 
         {/* Savings Goals */}
         <section className="mb-8">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
             <h2 className="text-xl font-semibold text-gray-900">
               My Savings Goals
             </h2>
