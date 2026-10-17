@@ -14,9 +14,13 @@ CREATE INDEX IF NOT EXISTS idx_transactions_user_date
 ON transactions (user_id, transaction_date DESC);
 
 CREATE TABLE IF NOT EXISTS savings_goals (
-    user_id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
     name TEXT NOT NULL,
     target_amount NUMERIC(12, 2) NOT NULL,
     current_saved NUMERIC(12, 2) NOT NULL,
     deadline DATE NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_savings_goals_user
+ON savings_goals (user_id);

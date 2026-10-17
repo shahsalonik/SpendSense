@@ -1,12 +1,10 @@
+
 from collections import defaultdict
 from database import get_connection
-
-
+from uuid import uuid4
 
 
 def get_subscriptions(user_id="demo-user-1"):
-    from collections import defaultdict
-
     with get_connection() as conn:
         rows = conn.execute("""
             SELECT merchant, amount, transaction_date
@@ -32,7 +30,7 @@ def get_subscriptions(user_id="demo-user-1"):
             continue
 
         intervals = [
-            (payments[i][1] - payments[i-1][1]).days
+            (payments[i][1] - payments[i - 1][1]).days
             for i in range(1, len(payments))
         ]
 
@@ -65,8 +63,7 @@ def get_summary(user_id="demo-user-1"):
             SELECT category, SUM(amount)
             FROM transactions
             WHERE user_id = %s
-            AND transaction_date >=
-                date_trunc('month', NOW())
+            AND transaction_date >= date_trunc('month', NOW())
             GROUP BY category
             ORDER BY SUM(amount) DESC
         """, (user_id,)).fetchall()
@@ -92,4 +89,62 @@ def get_insights(user_id="demo-user-1"):
             for subscription in get_subscriptions(user_id)
             if subscription["price_increased"]
         ]
+    }
+
+
+def get_goals(user_id="demo-user-1"):
+    with get_connection() as conn:
+        rows = conn.execute("""
+            SELECT id, name, target_amount, current_saved, deadline
+            FROM savings_goals
+            WHERE user_id = %s
+            ORDER BY deadline
+        """, (user_id,)).fetchall()
+
+    return [
+        {
+            "id": row[0],
+            "name": row[1],
+            "target_amount": float(row[2]),
+            "current_saved": float(row[3]),
+            "deadline": row[4].isoformat(),
+        }
+        for row in rows
+    ]
+
+
+def create_goal(user_id, goal):
+    goal_id = str(uuid4())
+
+    with get_connection() as conn:
+        conn.execute("""
+            INSERT INTO savings_goals (
+                id, user_id, name, target_amount,
+                current_saved, deadline
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            goal_id,
+            user_id,
+            goal.name,
+            goal.target_amount,
+            goal.current_saved,
+            goal.deadline
+        ))
+
+    return {
+        "success": True,
+        "id": goal_id
+    }
+
+
+def delete_goal(user_id, goal_id):
+    with get_connection() as conn:
+        result = conn.execute("""
+            DELETE FROM savings_goals
+            WHERE user_id = %s AND id = %s
+        """, (user_id, goal_id))
+
+    return {
+        "success": result.rowcount > 0
     }
