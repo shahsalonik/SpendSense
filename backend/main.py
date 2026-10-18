@@ -15,11 +15,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# allow_origins=[
+allow_origins=[
     
-    # "http://localhost:3000",
-    # "https://your-frontend-domain.com",
-# ],
+    "http://localhost:3000",
+    "https://spend-sense-7a29.vercel.app",
+],
 
 # Financial data endpoints
 app.include_router(finance_router)
