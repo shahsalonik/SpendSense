@@ -14,35 +14,12 @@ import { api } from "@/lib/api";
 
 import type { Subscription, SavingsGoal, SpendingCategory } from "@/lib/types";
 
-// Temporary goals until Person A's goals API is ready
-const sampleGoals: SavingsGoal[] = [
-  {
-    id: "goal-1",
-    name: "New Car",
-    target_amount: 15000,
-    current_saved: 4500,
-    deadline: "2027-06-30",
-  },
-  {
-    id: "goal-2",
-    name: "Emergency Fund",
-    target_amount: 5000,
-    current_saved: 2100,
-    deadline: "2027-03-31",
-  },
-  {
-    id: "goal-3",
-    name: "Vacation",
-    target_amount: 2000,
-    current_saved: 650,
-    deadline: "2026-12-31",
-  },
-];
-
 export default function Home() {
   // Savings goals
-  const [goals, setGoals] = useState<SavingsGoal[]>(sampleGoals);
+  const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [goalsLoaded, setGoalsLoaded] = useState(false);
+  const [goalsError, setGoalsError] = useState<string | null>(null);
+  const [goalsRetry, setGoalsRetry] = useState(0);
 
   // Live Tiger Data financial information
   const [spending, setSpending] = useState<SpendingCategory[]>([]);
@@ -79,37 +56,29 @@ export default function Home() {
     loadFinancialData();
   }, []);
 
-  // Load saved goals from localStorage
+  // The backend is the source of truth for savings goals.
   useEffect(() => {
-    try {
-      const savedGoals = localStorage.getItem("spendsense-goals");
-
-      if (savedGoals !== null) {
-        const parsed = JSON.parse(savedGoals);
-
-        if (Array.isArray(parsed)) {
-          setGoals(parsed);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load saved goals:", error);
-    } finally {
+    let cancelled = false;
+    api.getGoals().then((data) => {
+      if (cancelled) return;
+      setGoals(data.goals);
       setGoalsLoaded(true);
-    }
-  }, []);
+      setGoalsError(null);
+    }).catch(() => {
+      if (!cancelled) setGoalsError("Unable to load your savings goals. Please try again.");
+    });
+    return () => { cancelled = true; };
+  }, [goalsRetry]);
 
-  // Persist goals whenever they change
-  useEffect(() => {
-    if (goalsLoaded) {
-      localStorage.setItem("spendsense-goals", JSON.stringify(goals));
-    }
-  }, [goals, goalsLoaded]);
-
-  function handleAddGoal(goal: SavingsGoal) {
-    setGoals((prev) => [...prev, goal]);
+  async function handleAddGoal(goal: Omit<SavingsGoal, "id">) {
+    const result = await api.saveGoal(goal);
+    if (!result.success || !result.id) throw new Error("Goal was not saved");
+    setGoals((prev) => [...prev, { ...goal, id: result.id }]);
   }
 
-  function handleDeleteGoal(id: string) {
+  async function handleDeleteGoal(id: string) {
+    const result = await api.deleteGoal(id);
+    if (!result.success) throw new Error("Goal was not deleted");
     setGoals((prev) => prev.filter((goal) => goal.id !== id));
   }
 
@@ -194,9 +163,20 @@ export default function Home() {
               My Savings Goals
             </h2>
 
-            <AddGoalForm onAddGoal={handleAddGoal} />
+            {goalsLoaded && <AddGoalForm onAddGoal={handleAddGoal} />}
           </div>
 
+          {goalsError && (
+            <div role="alert" className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">
+              {goalsError}
+              <button type="button" className="ml-3 underline" onClick={() => {
+                setGoalsError(null);
+                setGoalsRetry((value) => value + 1);
+              }}>Retry</button>
+            </div>
+          )}
+          {!goalsLoaded && !goalsError && <p role="status" className="mb-4 text-gray-500">Loading savings goals...</p>}
+          {goalsLoaded && goals.length === 0 && <p className="mb-4 text-gray-500">No savings goals yet. Add your first goal above or ask the assistant.</p>}
           {goalsLoaded && <GoalSavingsSummary goals={goals} />}
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -207,7 +187,7 @@ export default function Home() {
         </section>
 
         {/* Backboard AI Assistant */}
-        {!loading && !financialError && (
+        {!loading && !financialError && goalsLoaded && (
           <Chat
             goals={goals}
             subscriptions={subscriptions}

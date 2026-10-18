@@ -17,7 +17,7 @@ import "katex/dist/katex.min.css";
 
 interface ChatProps {
   goals: SavingsGoal[];
-  onAddGoal: (goal: SavingsGoal) => void;
+  onAddGoal: (goal: Omit<SavingsGoal, "id">) => Promise<void>;
   subscriptions: Subscription[];
   spending: SpendingSummary;
 }
@@ -180,8 +180,12 @@ export default function Chat({ goals, subscriptions, spending, onAddGoal }: Chat
         if (goal.deadline < today) {
           reply = "Choose today or a future date for your goal. What deadline would you like?";
         } else {
-          onAddGoal({ ...goal, id: crypto.randomUUID() });
-          reply = `Added **${goal.name}** to My Savings Goals: **$${goal.target_amount.toLocaleString()}** by **${goal.deadline}**, with **$${goal.current_saved.toLocaleString()}** already saved.`;
+          try {
+            await onAddGoal(goal);
+            reply = `Added **${goal.name}** to My Savings Goals: **$${goal.target_amount.toLocaleString()}** by **${goal.deadline}**, with **$${goal.current_saved.toLocaleString()}** already saved.`;
+          } catch {
+            reply = "I couldn’t confirm that your goal was saved. Refresh the page to check before trying again.";
+          }
         }
       }
 

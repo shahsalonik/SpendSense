@@ -6,10 +6,26 @@ import type { SavingsGoal } from "@/lib/types";
 
 interface GoalCardProps {
   goal: SavingsGoal;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
 }
 
 export default function GoalCard({ goal, onDelete }: GoalCardProps) {
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(goal.id);
+    } catch {
+      setDeleteError("Unable to delete this goal. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const [today, setToday] = useState<Date | null>(null);
 
   // Get current date only after mounting in the browser.
@@ -80,7 +96,8 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
 
         <button
           type="button"
-          onClick={() => onDelete(goal.id)}
+          onClick={() => void handleDelete()}
+          disabled={deleting}
           className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
           aria-label={`Delete ${goal.name}`}
           title="Delete goal"
@@ -88,6 +105,9 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
+
+      {deleteError && <p role="alert" className="mb-3 text-sm text-red-700">{deleteError}</p>}
+      {deleting && <p role="status" className="mb-3 text-sm text-gray-500">Deleting...</p>}
 
       {/* Current savings */}
       <div className="mb-3">

@@ -5,7 +5,7 @@ import { Plus, X } from "lucide-react";
 import type { SavingsGoal } from "@/lib/types";
 
 interface AddGoalFormProps {
-  onAddGoal: (goal: SavingsGoal) => void;
+  onAddGoal: (goal: Omit<SavingsGoal, "id">) => Promise<void>;
 }
 
 function getLocalToday() {
@@ -22,8 +22,12 @@ export default function AddGoalForm({ onAddGoal }: AddGoalFormProps) {
   const [minDate, setMinDate] = useState("");
   const [dateError, setDateError] = useState("");
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (saving) return;
 
     const target = Number(targetAmount);
     const saved = Number(currentSaved);
@@ -46,15 +50,23 @@ export default function AddGoalForm({ onAddGoal }: AddGoalFormProps) {
       return;
     }
 
-    const newGoal: SavingsGoal = {
-      id: crypto.randomUUID(),
+    const newGoal: Omit<SavingsGoal, "id"> = {
       name: name.trim(),
       target_amount: target,
       current_saved: saved,
       deadline,
     };
 
-    onAddGoal(newGoal);
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onAddGoal(newGoal);
+    } catch {
+      setSaveError("Unable to save your goal. Your entries are still here; please try again.");
+      return;
+    } finally {
+      setSaving(false);
+    }
 
     setName("");
     setTargetAmount("");
@@ -89,6 +101,7 @@ export default function AddGoalForm({ onAddGoal }: AddGoalFormProps) {
 
         <button
           type="button"
+          disabled={saving}
           onClick={() => setIsOpen(false)}
           aria-label="Close form"
           className="text-gray-500 hover:text-gray-900"
@@ -97,7 +110,7 @@ export default function AddGoalForm({ onAddGoal }: AddGoalFormProps) {
         </button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <fieldset disabled={saving} className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="mb-1 block text-sm text-gray-700">
             What are you saving for?
@@ -170,13 +183,15 @@ export default function AddGoalForm({ onAddGoal }: AddGoalFormProps) {
             {dateError || "Choose today or a future date."}
           </p>
         </div>
-      </div>
+      </fieldset>
 
+      {saveError && <p role="alert" className="mt-3 text-sm text-red-700">{saveError}</p>}
       <button
+        disabled={saving}
         type="submit"
         className="mt-5 rounded-xl bg-indigo-600 px-5 py-2 font-medium text-white hover:bg-indigo-700"
       >
-        Save Goal
+        {saving ? "Saving..." : "Save Goal"}
       </button>
     </form>
   );
