@@ -54,3 +54,15 @@ test('API failures keep upstream status and missing config fails closed', async 
     assert.equal((await GET(request,context('auth/me'))).status,503);
   } finally { global.fetch = original; process.env.AUTH_PROXY_SECRET = secret; }
 });
+
+
+test('goal date is forwarded without forwarding a user identity override', async () => {
+  const original = global.fetch;
+  let target;
+  global.fetch = async url => { target = url; return new Response('{"goals":[]}'); };
+  try {
+    const request = new NextRequest('https://frontend.example.test/api/backend/goals?as_of=2026-10-18&user_id=someone-else');
+    assert.equal((await GET(request,context('goals'))).status,200);
+    assert.equal(target,'https://backend.example.test/api/goals?as_of=2026-10-18');
+  } finally { global.fetch = original; }
+});

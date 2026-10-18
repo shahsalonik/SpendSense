@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Trash2, CalendarDays, Target } from "lucide-react";
 import type { SavingsGoal } from "@/lib/types";
 
@@ -26,14 +26,6 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
     }
   }
 
-  const [today, setToday] = useState<Date | null>(null);
-
-  // Get current date only after mounting in the browser.
-  // This prevents Next.js prerendering errors.
-  useEffect(() => {
-    setToday(new Date());
-  }, []);
-
   const progress =
     goal.target_amount > 0
       ? Math.min(
@@ -42,32 +34,15 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
         )
       : 0;
 
-  const remaining = Math.max(0, goal.target_amount - goal.current_saved);
+  const remaining = goal.pace?.remaining ?? Math.max(0, goal.target_amount - goal.current_saved);
 
   const deadline = new Date(`${goal.deadline}T00:00:00`);
 
-  // Compare calendar dates so time of day and daylight saving do not affect the rate.
-  const daysRemaining = today
-    ? Math.round(
-        (Date.UTC(deadline.getFullYear(), deadline.getMonth(), deadline.getDate()) -
-          Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
-          (1000 * 60 * 60 * 24),
-      )
-    : null;
-  const monthsRemaining = daysRemaining === null ? null : Math.max(0, daysRemaining / 30.44);
-  const isDueSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining < 30;
-
-  const monthlyNeeded =
-    monthsRemaining === null
-      ? null
-      : monthsRemaining > 0
-        ? remaining / monthsRemaining
-        : remaining > 0
-          ? null
-          : 0;
-
-  const isOverdue =
-    daysRemaining !== null && daysRemaining < 0 && remaining > 0;
+  const pace = goal.pace;
+  const daysRemaining = pace?.days_remaining ?? null;
+  const isDueSoon = pace?.status === "weekly";
+  const monthlyNeeded = pace?.monthly_needed ?? null;
+  const isOverdue = pace?.status === "overdue";
 
   const savingsColors = remaining === 0
     ? { panel: "bg-[#edf3e9]", label: "text-[#486044]", amount: "text-[#30472e]" }
@@ -161,7 +136,7 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
                   : "Estimated Monthly Savings Needed"}
         </p>
 
-        {monthsRemaining === null ? (
+        {!pace ? (
           <p className="text-sm text-indigo-600">Calculating...</p>
         ) : remaining === 0 ? (
           <p className={`font-semibold ${savingsColors.amount}`}>Goal reached!</p>
@@ -176,11 +151,11 @@ export default function GoalCard({ goal, onDelete }: GoalCardProps) {
         ) : monthlyNeeded !== null ? (
           <div>
             <p className={`text-xl font-bold ${savingsColors.amount}`}>
-              {formatCurrency(isDueSoon && daysRemaining !== null ? remaining / (daysRemaining / 7) : monthlyNeeded)}/{isDueSoon ? "week" : "month"}
+              {formatCurrency(isDueSoon ? pace.weekly_needed! : monthlyNeeded)}/{isDueSoon ? "week" : "month"}
             </p>
             {isDueSoon && daysRemaining !== null && daysRemaining > 0 && (
               <p className={`mt-1 text-xs ${savingsColors.label}`}>
-                About {formatCurrency(remaining / daysRemaining)}/day
+                About {formatCurrency(pace.daily_needed!)}/day
                 {" "}for the next {daysRemaining} {daysRemaining === 1 ? "day" : "days"}.
               </p>
             )}

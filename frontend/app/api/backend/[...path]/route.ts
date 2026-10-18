@@ -34,7 +34,12 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
   try {
     const body = request.method === "GET" ? undefined : await request.text();
     if (body && body.length > 100_000) return NextResponse.json({ detail: "Request too large" }, { status: 413 });
-    const upstream = await fetch(`${base.replace(/\/$/, "")}/api/${endpoint}`, {
+    const target = new URL(`${base.replace(/\/$/, "")}/api/${endpoint}`);
+    if (endpoint === "goals" && request.method === "GET") {
+      const asOf = request.nextUrl.searchParams.get("as_of");
+      if (asOf) target.searchParams.set("as_of", asOf);
+    }
+    const upstream = await fetch(target.toString(), {
       method: request.method, headers, body, cache: "no-store", redirect: "error",
       signal: AbortSignal.timeout(110_000),
     });

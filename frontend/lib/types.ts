@@ -18,8 +18,19 @@ export interface SpendingSummary {
   categories: SpendingCategory[];
 }
 
+export interface GoalPace {
+  as_of: string;
+  days_remaining: number;
+  remaining: number;
+  status: "monthly" | "weekly" | "due_today" | "overdue" | "complete";
+  monthly_needed: number | null;
+  weekly_needed: number | null;
+  daily_needed: number | null;
+}
+
 // A user's savings goal
 export interface SavingsGoal {
+  pace?: GoalPace;
   id: string;
   name: string;
   target_amount: number;

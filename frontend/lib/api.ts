@@ -44,6 +44,11 @@ export const authApi = {
   bootstrap: () => authPost("bootstrap"),
 };
 
+function localToday() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 export const api = {
   // Get spending totals grouped by category
   getSummary: () => request<SpendingSummary>("/api/summary"),
@@ -56,15 +61,15 @@ export const api = {
   getInsights: () => request<{ insights: FinancialInsight[] }>("/api/insights"),
 
   // Get the user's saved goals
-  getGoals: () => request<{ goals: SavingsGoal[] }>("/api/goals"),
+  getGoals: () => request<{ goals: SavingsGoal[] }>(`/api/goals?as_of=${localToday()}`),
 
-  saveGoal: (goal: Omit<SavingsGoal, "id">) =>
-    request<{ success: boolean; id: string }>("/api/goals", {
+  saveGoal: (goal: Omit<SavingsGoal, "id">, asOf = localToday()) =>
+    request<{ success: boolean; id: string; goal: SavingsGoal }>("/api/goals", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(goal),
+      body: JSON.stringify({ ...goal, as_of: asOf }),
     }),
 
   deleteGoal: (id: string) =>
@@ -89,6 +94,7 @@ export const api = {
       },
       body: JSON.stringify({
         message,
+        as_of: goals[0]?.pace?.as_of ?? localToday(),
         assistant_id: assistantId,
         thread_id: threadId,
         context: {

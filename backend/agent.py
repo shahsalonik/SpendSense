@@ -5,6 +5,7 @@ import requests
 from dotenv import load_dotenv
 from datetime import date
 from goal_actions import extract_goal_action
+from goal_pacing import goal_with_pace
 
 load_dotenv()
 
@@ -43,7 +44,9 @@ def send_chat_message(
     goals = (context or {}).get("goals", [])
     subscriptions = (context or {}).get("subscriptions", [])
     spending = (context or {}).get("spending", {"categories": []})
-    today = date.today().isoformat()
+    as_of = date.fromisoformat((context or {}).get("as_of") or date.today().isoformat())
+    today = as_of.isoformat()
+    goals = [goal_with_pace(goal, as_of) for goal in goals]
 
     financial_context = {
         "active_goals": goals,
@@ -79,21 +82,19 @@ INSTRUCTIONS:
 
 CURRENT DATE: {today}
 
-DATE AND SAVINGS CALCULATION RULES:
-- Always use CURRENT DATE when calculating time remaining until a goal deadline.
-- Never assume a savings goal has more time remaining than its deadline allows.
-- Calculate remaining savings as max(0, target_amount minus current_saved).
-- Calculate days remaining as the calendar-day difference between deadline
-  and CURRENT DATE. For estimates, months remaining = days remaining / 30.44.
-- For deadlines 1-29 days away, show weekly pace = remaining * 7 / days remaining.
-  For 30 or more days, show monthly pace = remaining * 30.44 / days remaining.
-- For goals due today, show the amount needed today, without dividing by zero.
-  For completed goals, say they are complete; do not recommend more savings.
-- For monthly savings recommendations, divide the remaining savings
-  by the actual time remaining, not an assumed number of months.
-- Clearly distinguish money already saved from potential future savings.
-- If a goal's deadline has passed, explain that the deadline needs updating.
-- Show your calculations when recommending monthly savings amounts.
+AUTHORITATIVE GOAL FIGURES:
+- Each active_goals entry includes a server-calculated pace object. These are
+  the SAME values shown on the dashboard cards, as of pace.as_of.
+- Copy pace.remaining, pace.days_remaining, and the relevant savings amount
+  exactly. Do NOT recalculate date differences or required savings rates.
+- For pace.status monthly, quote pace.monthly_needed in USD/month.
+  For weekly, quote pace.weekly_needed in USD/week and pace.daily_needed if useful.
+  Display money to two decimal places, matching the card.
+- For due_today, show pace.remaining needed today; for overdue, explain the
+  deadline needs updating; for complete, say the goal is reached.
+- Never reuse amounts, deadlines, or savings rates from examples or chat memory
+  when they differ from these authoritative figures.
+- Use CURRENT DATE for relative dates in new-goal requests only.
 
 GOAL RECOMMENDATIONS:
 - When asked how spending changes can help reach goals, show each incomplete
@@ -115,6 +116,9 @@ GOAL RECOMMENDATIONS:
   correct, delete, or dismiss the goal, or present small cuts as a realistic plan.
 - Treat proposed percentage cuts as illustrative choices, not personalized optimal
   budgets. Do not repeatedly default to 20% dining and 10% entertainment.
+- A price increase cannot simply be canceled. Canceling a subscription saves its
+  full current_amount; recovering only monthly_increase requires a confirmed
+  cheaper plan or negotiated price. Do not invent available discounts or plans.
 - Do not double-count subscription savings already included in entertainment cuts,
   or allocate the same savings in full to multiple goals. Explain any allocation.
 
@@ -155,15 +159,6 @@ RESPONSE FORMATTING:
 - Do not use emojis unless the user explicitly requests them.
 - Use plain text for calculations instead of LaTeX.
 - Keep simple answers under 120 words when possible.
-
-EXAMPLE RESPONSE STYLE (illustrative numbers only; calculate from current data):
-
-Your trip needs **$3,900 more**, or about **$880/month** by its deadline.
-Cutting dining by **$15/month** and entertainment by **$2.70/month** would
-cover only about **2%** of that pace—roughly **$79** before the deadline.
-These are optional cuts, and the spending shown may not be your full budget.
-How much are you already setting aside each month? That will help determine
-whether a smaller trip budget or later deadline is needed.
 
 USER MESSAGE:
 {message}

@@ -78,9 +78,9 @@ function Dashboard({ user }: { user: AuthUser }) {
   }, [goalsRetry]);
 
   async function handleAddGoal(goal: Omit<SavingsGoal, "id">) {
-    const result = await api.saveGoal(goal);
-    if (!result.success || !result.id) throw new Error("Goal was not saved");
-    setGoals((prev) => [...prev, { ...goal, id: result.id }]);
+    const result = await api.saveGoal(goal, goals[0]?.pace?.as_of);
+    if (!result.success || !result.id || !result.goal?.pace) throw new Error("Goal was not saved");
+    setGoals((prev) => [...prev, result.goal]);
   }
 
   async function handleDeleteGoal(id: string) {

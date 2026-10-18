@@ -1,6 +1,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
+from datetime import date
 
 from agent import send_chat_message
 from auth import current_user, limit_attempts
@@ -39,6 +40,7 @@ class FinancialContext(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    as_of: date | None = None
     message: str = Field(min_length=1, max_length=10000)
     assistant_id: str | None = None
     thread_id: str | None = None
@@ -62,6 +64,7 @@ def chat(request: ChatRequest, user=Depends(current_user)):
             thread_id=request.thread_id,
             assistant_id=assistant_id,
             context={
+                "as_of": (request.as_of or date.today()).isoformat(),
                 "goals": get_goals(user["id"]),
                 "subscriptions": get_subscriptions(user["id"]),
                 "spending": get_summary(user["id"]),
