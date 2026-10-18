@@ -10,16 +10,13 @@ app = FastAPI(title="SpendSense API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://spend-sense-7a29.vercel.app",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-allow_origins=[
-    
-    "http://localhost:3000",
-    "https://spend-sense-7a29.vercel.app",
-],
 
 # Financial data endpoints
 app.include_router(finance_router)
