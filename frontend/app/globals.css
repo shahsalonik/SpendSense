@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* SpendSense uses a consistent light ivory theme regardless of system appearance. */
 :root {
   --background: #f3efe6;
   --foreground: #182338;

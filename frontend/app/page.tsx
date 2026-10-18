@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { Landmark } from "lucide-react";
 
+import AuthGate from "@/components/AuthGate";
+import type { AuthUser } from "@/lib/api";
+
 import AddGoalForm from "@/components/AddGoalForm";
 import Chat from "@/components/Chat";
 import SubscriptionCard from "@/components/SubscriptionCard";
@@ -15,6 +18,10 @@ import { api } from "@/lib/api";
 import type { Subscription, SavingsGoal, SpendingCategory } from "@/lib/types";
 
 export default function Home() {
+  return <AuthGate>{(user) => <Dashboard key={user.id} user={user} />}</AuthGate>;
+}
+
+function Dashboard({ user }: { user: AuthUser }) {
   // Savings goals
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [goalsLoaded, setGoalsLoaded] = useState(false);
@@ -100,6 +107,9 @@ export default function Home() {
           </p>
         </header>
 
+        <p className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
+          Sample spending: these transactions are fictional and belong to your account. Your savings goals are private to you.
+        </p>
         {/* Financial data error */}
         {financialError && (
           <div
@@ -189,6 +199,7 @@ export default function Home() {
         {/* Backboard AI Assistant */}
         {!loading && !financialError && goalsLoaded && (
           <Chat
+            userId={user.id}
             goals={goals}
             subscriptions={subscriptions}
             spending={{ categories: spending }}

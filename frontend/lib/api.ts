@@ -6,21 +6,43 @@ import type {
   ChatResponse,
 } from "./types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BASE_URL = "/api/backend";
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}
 
 // Reusable function for making API requests
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
+  const response = await fetch(`${BASE_URL}${endpoint.replace(/^\/api/, "")}`, {
     ...options,
     cache: "no-store",
+    credentials: "same-origin",
+    headers: { ...options?.headers, "X-SpendSense-Client": "web" },
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401 && !endpoint.startsWith("/api/auth/")) {
+      window.dispatchEvent(new Event("spendsense-session-expired"));
+    }
+    throw new ApiError(response.status, typeof data.detail === "string" ? data.detail : "Request failed. Please try again.");
   }
 
   return response.json();
 }
+
+export interface AuthUser { id: string; email: string }
+const authPost = <T>(path: string, body = {}) => request<T>(`/api/auth/${path}`, {
+  method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+});
+export const authApi = {
+  me: () => request<{ user: AuthUser }>("/api/auth/me"),
+  login: (email: string, password: string) => authPost<{user: AuthUser}>("login", {email, password}),
+  signup: (email: string, password: string) => authPost<{user: AuthUser}>("signup", {email, password}),
+  logout: () => authPost("logout"),
+  bootstrap: () => authPost("bootstrap"),
+};
 
 export const api = {
   // Get spending totals grouped by category

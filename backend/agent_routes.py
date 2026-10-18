@@ -1,8 +1,11 @@
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
 from agent import send_chat_message
+from auth import current_user, limit_attempts
+from chat_accounts import owned_assistant, save_thread
+from analytics import get_goals, get_subscriptions, get_summary
 
 router = APIRouter()
 
@@ -36,7 +39,7 @@ class FinancialContext(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=10000)
     assistant_id: str | None = None
     thread_id: str | None = None
     context: FinancialContext = Field(default_factory=FinancialContext)
@@ -50,16 +53,23 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/api/chat", response_model=ChatResponse)
-def chat(request: ChatRequest):
+def chat(request: ChatRequest, user=Depends(current_user)):
+    limit_attempts("chat", user["id"], 30)
     try:
-        return send_chat_message(
+        assistant_id = owned_assistant(user["id"], request.thread_id)
+        result = send_chat_message(
             message=request.message,
             thread_id=request.thread_id,
-            context=request.context.model_dump(),
+            assistant_id=assistant_id,
+            context={
+                "goals": get_goals(user["id"]),
+                "subscriptions": get_subscriptions(user["id"]),
+                "spending": get_summary(user["id"]),
+            },
         )
-    except Exception as e:
-        print(f"Backboard error: {e}")
-        raise HTTPException(
-            status_code=502,
-            detail="Unable to get a response from the AI assistant",
-        )
+        save_thread(user["id"], result["thread_id"])
+        return result
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(502, "Unable to get a response from the AI assistant")

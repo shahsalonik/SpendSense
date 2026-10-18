@@ -1,5 +1,7 @@
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException
+
+from auth import current_user
 
 from analytics import (
     get_summary,
@@ -7,37 +9,35 @@ from analytics import (
     get_insights,
 )
 
-from ingest import sync_purchases
 
 router = APIRouter(prefix="/api")
 
-# Development/demo user IDs only.
-# This is not an authentication mechanism.
+# Every account-specific endpoint derives its identity from the session.
 
 
 @router.post("/sync")
-def sync():
-    return sync_purchases()
+def sync(user=Depends(current_user)):
+    raise HTTPException(403, "Bank sync is not available for sample accounts")
 
 
 @router.get("/summary")
 def summary(
-    user_id: str = Query(default="demo-user-1")
+    user=Depends(current_user)
 ):
-    return get_summary(user_id)
+    return get_summary(user["id"])
 
 
 @router.get("/subscriptions")
 def subscriptions(
-    user_id: str = Query(default="demo-user-1")
+    user=Depends(current_user)
 ):
     return {
-        "subscriptions": get_subscriptions(user_id)
+        "subscriptions": get_subscriptions(user["id"])
     }
 
 
 @router.get("/insights")
 def insights(
-    user_id: str = Query(default="demo-user-1")
+    user=Depends(current_user)
 ):
-    return get_insights(user_id)
+    return get_insights(user["id"])

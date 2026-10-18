@@ -16,6 +16,7 @@ import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 
 interface ChatProps {
+  userId: string;
   goals: SavingsGoal[];
   onAddGoal: (goal: Omit<SavingsGoal, "id">) => Promise<void>;
   subscriptions: Subscription[];
@@ -30,7 +31,7 @@ interface SavedChat {
   assistantId: string | null;
 }
 
-const HISTORY_KEY = "spendsense-chat-history";
+
 
 function isSavedChat(value: unknown): value is SavedChat {
   if (!value || typeof value !== "object") return false;
@@ -59,7 +60,10 @@ const STARTER_PROMPTS = [
   },
 ];
 
-export default function Chat({ goals, subscriptions, spending, onAddGoal }: ChatProps) {
+export default function Chat({ userId, goals, subscriptions, spending, onAddGoal }: ChatProps) {
+  const historyKey = `spendsense-chat-history:${userId}`;
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -83,7 +87,7 @@ export default function Chat({ goals, subscriptions, spending, onAddGoal }: Chat
     // Browser storage is read after hydration; it is unavailable during prerendering.
     /* eslint-disable react-hooks/set-state-in-effect */
     try {
-      const raw = localStorage.getItem(HISTORY_KEY);
+      const raw = localStorage.getItem(historyKey);
       const parsed: unknown = raw ? JSON.parse(raw) : [];
       if (!Array.isArray(parsed) || !parsed.every(isSavedChat)) {
         throw new Error("Invalid chat history");
@@ -96,13 +100,14 @@ export default function Chat({ goals, subscriptions, spending, onAddGoal }: Chat
       setHistoryReady(true);
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, []);
+  }, [historyKey]);
 
   function persistHistory(chats: SavedChat[]) {
+    if (!mounted.current) return;
     historyRef.current = chats;
     setSavedChats(chats);
     try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(chats));
+      localStorage.setItem(historyKey, JSON.stringify(chats));
       setStorageError(null);
     } catch {
       setStorageError("Chat history could not be saved in this browser. Keep this page open to retain this session.");
@@ -169,6 +174,7 @@ export default function Chat({ goals, subscriptions, spending, onAddGoal }: Chat
         spending,
       );
 
+      if (!mounted.current) return;
       setAssistantId(response.assistant_id);
       setThreadId(response.thread_id);
 

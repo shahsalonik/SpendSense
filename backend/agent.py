@@ -20,12 +20,14 @@ def send_chat_message(
     message: str,
     thread_id: str | None = None,
     context: dict | None = None,
+    assistant_id: str | None = None,
 ):
+    assistant_id = assistant_id or ASSISTANT_ID
     headers = {"X-API-Key": API_KEY}
 
     if not thread_id:
         response = requests.post(
-            f"{BASE_URL}/assistants/{ASSISTANT_ID}/threads",
+            f"{BASE_URL}/assistants/{assistant_id}/threads",
             headers=headers,
             timeout=30,
         )
@@ -193,6 +195,6 @@ USER MESSAGE:
     return {
         "reply": reply,
         "goal_to_create": goal,
-        "assistant_id": ASSISTANT_ID,
+        "assistant_id": assistant_id,
         "thread_id": thread_id,
     }
